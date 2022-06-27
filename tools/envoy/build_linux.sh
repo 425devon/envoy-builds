@@ -36,8 +36,10 @@ ls -l
 echo "SOURCE_DIR=${SOURCE_DIR}"
 
 docker build -t "${LOCAL_BUILD_IMAGE}" --progress=plain \
+  --add-host=$(REMOTE_CACHE_SEVER_HOSTNAME):$(REMOTE_CACHE_SEVER_IP)\
   --build-arg ENVOY_BUILD_IMAGE="${ENVOY_BUILD_IMAGE}" \
   --build-arg BUILD_CMD="${BUILD_CMD}" \
+  --build-arg REMOTE_CACHE_SEVER=$(REMOTE_CACHE_SEVER_HOSTNAME)
   -f "${WORK_DIR:-.}/tools/envoy/Dockerfile.build-ubuntu" "${SOURCE_DIR}"
 
 # copy out the binary
