@@ -29,8 +29,7 @@ ENVOY_BUILD_SHA=$(curl --fail --location --silent https://raw.githubusercontent.
 ENVOY_BUILD_IMAGE="envoyproxy/envoy-build-centos:${ENVOY_BUILD_SHA}"
 LOCAL_BUILD_IMAGE="envoy-builder:${ENVOY_TAG}"
 
-docker build -t "${LOCAL_BUILD_IMAGE}" --progress=plain \
-  --add-host=$(REMOTE_CACHE_SEVER_HOSTNAME):$(REMOTE_CACHE_SEVER_IP)
+docker build --add-host=$(REMOTE_CACHE_SEVER_HOSTNAME):$(REMOTE_CACHE_SEVER_IP) -t "${LOCAL_BUILD_IMAGE}" --progress=plain \
   --build-arg REMOTE_CACHE_SEVER=$(REMOTE_CACHE_SEVER_HOSTNAME)
   --build-arg ENVOY_BUILD_IMAGE="${ENVOY_BUILD_IMAGE}" \
   --build-arg BUILD_CMD="${BUILD_CMD}" \
