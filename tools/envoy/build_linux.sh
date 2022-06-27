@@ -35,6 +35,8 @@ ls -l
 
 echo "SOURCE_DIR=${SOURCE_DIR}"
 
+echo "--add-host=$(REMOTE_CACHE_SEVER_HOSTNAME):$(REMOTE_CACHE_SEVER_IP)"
+
 docker build --add-host=$(REMOTE_CACHE_SEVER_HOSTNAME):$(REMOTE_CACHE_SEVER_IP) -t "${LOCAL_BUILD_IMAGE}" --progress=plain \
   --build-arg ENVOY_BUILD_IMAGE="${ENVOY_BUILD_IMAGE}" \
   --build-arg BUILD_CMD="${BUILD_CMD}" \
