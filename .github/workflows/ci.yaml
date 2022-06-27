@@ -7,142 +7,45 @@ on:
         type: string
         required: true
 jobs:
-  # build_envoy_alpine_amd64:
-  #   runs-on: ubuntu-18.04
-  #   steps:
-  #     - name: Checkout step
-  #       id: checkout
-  #       uses: actions/checkout@v2
+  build_envoy_alpine_amd64:
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Checkout step
+        id: checkout
+        uses: actions/checkout@v2
       
-  #     - name: make space
-  #       run: |
-  #         sudo rm -rf /usr/share/dotnet
-  #         sudo rm -rf /opt/ghc
-  #         sudo rm -rf "/usr/local/share/boost"
+      - name: make space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
 
-  #     - name: make build alpine
-  #       run: make build/envoy
-  #       env:
-  #         GOOS: linux
-  #         GOARCH: amd64
-  #         ENVOY_DISTRO: alpine
-  #         BUILD_ENVOY_FROM_SOURCES: true
-  #         ENVOY_TAG: ${{ github.event.inputs.envoyTag }}
-  #         BAZEL_BUILD_EXTRA_OPTIONS: --remote_http_cache=http://127.0.0.1:28080
-  #         BAZEL_BUILD_OPTIONS: >-
-  #           --jobs=3
+      - name: make build alpine
+        run: make build/envoy
+        env:
+          GOOS: linux
+          GOARCH: amd64
+          ENVOY_DISTRO: alpine
+          BUILD_ENVOY_FROM_SOURCES: true
+          ENVOY_TAG: ${{ github.event.inputs.envoyTag }}
 
-  #     - name: Zip artifact
-  #       run: |
-  #         if [[ -f build/artifacts-linux-amd64/envoy/envoy-${envoyTag#v}-alpine ]]; then  
-  #             tar -czvf build/artifacts-linux-amd64/envoy/envoy-${envoyTag#v}-alpine.tar.gz build/artifacts-linux-amd64/envoy/envoy-${envoyTag#v}-alpine
-  #         fi
-  #       env:
-  #         envoyTag: ${{ github.event.inputs.envoyTag }}
+      - name: Zip artifact
+        run: |
+          if [[ -f build/artifacts-linux-amd64/envoy/envoy-${envoyTag#v}-alpine ]]; then  
+              tar -czvf build/artifacts-linux-amd64/envoy/envoy-${envoyTag#v}-alpine.tar.gz build/artifacts-linux-amd64/envoy/envoy-${envoyTag#v}-alpine
+          fi
+        env:
+          envoyTag: ${{ github.event.inputs.envoyTag }}
       
-  #     - name: Save artifact
-  #       uses: actions/upload-artifact@v3
-  #       id: save_artifacts
-  #       with:
-  #         name: artifacts
-  #         path: |
-  #           build/**/envoy/*.tar.gz
+      - name: Save artifact
+        uses: actions/upload-artifact@v3
+        id: save_artifacts
+        with:
+          name: artifacts
+          path: |
+            build/**/envoy/*.tar.gz
 
-  # build_envoy_alpine_arm64:
-  #   runs-on: ubuntu-18.04
-  #   steps:
-  #     - name: Checkout step
-  #       id: checkout
-  #       uses: actions/checkout@v2
-      
-  #     - name: make space
-  #       run: |
-  #         sudo rm -rf /usr/share/dotnet
-  #         sudo rm -rf /opt/ghc
-  #         sudo rm -rf "/usr/local/share/boost"
-
-  #     - name: Set up QEMU
-  #       uses: docker/setup-qemu-action@master
-  #       with:
-  #         platforms: arm64
-
-  #     - name: Set up Docker Buildx
-  #       id: buildx
-  #       uses: docker/setup-buildx-action@master
-  #       with:
-  #         install: true
-
-  #     - name: add platform to dockerbuild
-  #       run: |
-  #         sed -i 's/docker build/docker buildx build --platform linux\/arm64/g' ./tools/envoy/build_linux.sh
-  #         cat ./tools/envoy/build_linux.sh
-
-  #     - name: make build alpine
-  #       run: make build/envoy
-  #       env:
-  #         GOOS: linux
-  #         GOARCH: arm64
-  #         ENVOY_DISTRO: alpine
-  #         BUILD_ENVOY_FROM_SOURCES: true
-  #         ENVOY_TAG: ${{ github.event.inputs.envoyTag }}
-
-  #     - name: Zip artifact
-  #       run: |
-  #         if [[ -f build/artifacts-linux-arm64/envoy/envoy-${envoyTag#v}-alpine ]]; then  
-  #             tar -czvf build/artifacts-linux-arm64/envoy/envoy-${envoyTag#v}-alpine.tar.gz build/artifacts-linux-arm64/envoy/envoy-${envoyTag#v}-alpine
-  #         fi
-  #       env:
-  #         envoyTag: ${{ github.event.inputs.envoyTag }}
-      
-  #     - name: Save artifact
-  #       uses: actions/upload-artifact@v3
-  #       id: save_artifacts
-  #       with:
-  #         name: artifacts
-  #         path: |
-  #           build/**/envoy/*.tar.gz
-
-  # build_envoy_centos_amd64:
-  #   runs-on: ubuntu-18.04
-  #   steps:
-  #     - name: Checkout step
-  #       id: checkout
-  #       uses: actions/checkout@v2
-
-  #     # Hacky solution to resolve running out of disk space
-  #     # https://github.com/actions/virtual-environments/issues/2840#issuecomment-790492173
-  #     - name: make space
-  #       run: |
-  #         sudo rm -rf /usr/share/dotnet
-  #         sudo rm -rf /opt/ghc
-  #         sudo rm -rf "/usr/local/share/boost"
-
-  #     - name: make build centos
-  #       run: make build/envoy
-  #       env:
-  #         GOOS: linux
-  #         GOARCH: amd64
-  #         ENVOY_DISTRO: centos
-  #         BUILD_ENVOY_FROM_SOURCES: true
-  #         ENVOY_TAG: ${{ github.event.inputs.envoyTag }}
-      
-  #     - name: Zip artifact
-  #       run: |
-  #         if [[ -f build/artifacts-linux-amd64/envoy/envoy-${envoyTag#v}-centos ]]; then  
-  #             tar -czvf build/artifacts-linux-amd64/envoy/envoy-${envoyTag#v}-centos.tar.gz build/artifacts-linux-amd64/envoy/envoy-${envoyTag#v}-centos
-  #         fi
-  #       env:
-  #         envoyTag: ${{ github.event.inputs.envoyTag }}
-      
-  #     - name: Save artifact
-  #       uses: actions/upload-artifact@v3
-  #       id: save_artifacts
-  #       with:
-  #         name: artifacts
-  #         path: |
-  #           build/**/envoy/*.tar.gz
-
-  build_envoy_centos_arm64:
+  build_envoy_centos_amd64:
     runs-on: ubuntu-18.04
     steps:
       - name: Checkout step
@@ -157,35 +60,19 @@ jobs:
           sudo rm -rf /opt/ghc
           sudo rm -rf "/usr/local/share/boost"
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@master
-        with:
-          platforms: arm64
-
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@master
-        with:
-          install: true
-
-      - name: add platform to dockerbuild
-        run: |
-          sed -i 's/docker build/docker buildx build --platform linux\/arm64/g' ./tools/envoy/build_centos.sh
-          cat ./tools/envoy/build_centos.sh
-
       - name: make build centos
         run: make build/envoy
         env:
           GOOS: linux
-          GOARCH: arm64
+          GOARCH: amd64
           ENVOY_DISTRO: centos
           BUILD_ENVOY_FROM_SOURCES: true
           ENVOY_TAG: ${{ github.event.inputs.envoyTag }}
       
       - name: Zip artifact
         run: |
-          if [[ -f build/artifacts-linux-arm64/envoy/envoy-${envoyTag#v}-centos ]]; then  
-              tar -czvf build/artifacts-linux-arm64/envoy/envoy-${envoyTag#v}-centos.tar.gz build/artifacts-linux-arm64/envoy/envoy-${envoyTag#v}-centos
+          if [[ -f build/artifacts-linux-amd64/envoy/envoy-${envoyTag#v}-centos ]]; then  
+              tar -czvf build/artifacts-linux-amd64/envoy/envoy-${envoyTag#v}-centos.tar.gz build/artifacts-linux-amd64/envoy/envoy-${envoyTag#v}-centos
           fi
         env:
           envoyTag: ${{ github.event.inputs.envoyTag }}
@@ -198,57 +85,57 @@ jobs:
           path: |
             build/**/envoy/*.tar.gz
 
-  # build_envoy_darwin_amd64:
-  #   runs-on: macos-latest
-  #   steps:
-  #     - name: Checkout step
-  #       id: checkout
-  #       uses: actions/checkout@v2
+  build_envoy_darwin_amd64:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout step
+        id: checkout
+        uses: actions/checkout@v2
 
-  #     # https://github.com/envoyproxy/envoy/blob/main/bazel/README.md#quick-start-bazel-build-for-developers
-  #     - name: install common deps
-  #       run: | 
-  #         brew install coreutils automake ninja clang-format
+      # https://github.com/envoyproxy/envoy/blob/main/bazel/README.md#quick-start-bazel-build-for-developers
+      - name: install common deps
+        run: | 
+          brew install coreutils automake ninja clang-format
           
-  #     - name: install full xcode
-  #       run: |
-  #         sudo rm -rf /Library/Developer/CommandLineTools
-  #         softwareupdate --all --install --force
-  #         sudo xcode-select --install
+      - name: install full xcode
+        run: |
+          sudo rm -rf /Library/Developer/CommandLineTools
+          softwareupdate --all --install --force
+          sudo xcode-select --install
 
-  #     # https://github.com/actions/runner/issues/1456#issue-1042407558
-  #     - name: install and launch docker
-  #       run: |
-  #         HOMEBREW_NO_AUTO_UPDATE=1 brew install --cask docker
-  #         sudo /Applications/Docker.app/Contents/MacOS/Docker --unattended --install-privileged-components
-  #         open -a /Applications/Docker.app --args --unattended --accept-license
-  #         echo "We are waiting for Docker to be up and running. It can take over 2 minutes..."
-  #         while ! /Applications/Docker.app/Contents/Resources/bin/docker info &>/dev/null; do sleep 1; done
+      # https://github.com/actions/runner/issues/1456#issue-1042407558
+      - name: install and launch docker
+        run: |
+          HOMEBREW_NO_AUTO_UPDATE=1 brew install --cask docker
+          sudo /Applications/Docker.app/Contents/MacOS/Docker --unattended --install-privileged-components
+          open -a /Applications/Docker.app --args --unattended --accept-license
+          echo "We are waiting for Docker to be up and running. It can take over 2 minutes..."
+          while ! /Applications/Docker.app/Contents/Resources/bin/docker info &>/dev/null; do sleep 1; done
 
-  #     - name: make build darwin
-  #       run: make build/envoy
-  #       env:
-  #         GOOS: darwin
-  #         GOARCH: amd64
-  #         ENVOY_DISTRO: darwin
-  #         BUILD_ENVOY_FROM_SOURCES: true
-  #         ENVOY_TAG: ${{ github.event.inputs.envoyTag }}
+      - name: make build darwin
+        run: make build/envoy
+        env:
+          GOOS: darwin
+          GOARCH: amd64
+          ENVOY_DISTRO: darwin
+          BUILD_ENVOY_FROM_SOURCES: true
+          ENVOY_TAG: ${{ github.event.inputs.envoyTag }}
 
-  #     - name: Zip artifact
-  #       run: |
-  #         if [[ -f build/artifacts-darwin-amd64/envoy/envoy-${envoyTag#v}-darwin ]]; then  
-  #             tar -czvf build/artifacts-darwin-amd64/envoy/envoy-${envoyTag#v}-darwin.tar.gz build/artifacts-darwin-amd64/envoy/envoy-${envoyTag#v}-darwin
-  #         fi
-  #       env:
-  #         envoyTag: ${{ github.event.inputs.envoyTag }}
+      - name: Zip artifact
+        run: |
+          if [[ -f build/artifacts-darwin-amd64/envoy/envoy-${envoyTag#v}-darwin ]]; then  
+              tar -czvf build/artifacts-darwin-amd64/envoy/envoy-${envoyTag#v}-darwin.tar.gz build/artifacts-darwin-amd64/envoy/envoy-${envoyTag#v}-darwin
+          fi
+        env:
+          envoyTag: ${{ github.event.inputs.envoyTag }}
       
-  #     - name: Save artifact
-  #       uses: actions/upload-artifact@v3
-  #       id: save_artifacts
-  #       with:
-  #         name: artifacts
-  #         path: |
-  #           build/**/envoy/*.tar.gz
+      - name: Save artifact
+        uses: actions/upload-artifact@v3
+        id: save_artifacts
+        with:
+          name: artifacts
+          path: |
+            build/**/envoy/*.tar.gz
 
   # build_envoy_windows_amd64:
   #   runs-on: windows-2019
