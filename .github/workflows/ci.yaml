@@ -92,9 +92,10 @@ jobs:
     #     softwareupdate --all --install --force
     #     sudo xcode-select --install
 
-    - uses: maxim-lobanov/setup-xcode@v1
-      with:
-        xcode-version: latest-stable
+    - name: install full xcode
+      run: |
+        sudo rm -rf /Library/Developer/CommandLineTools
+        sudo xcode-select --install
 
     # https://github.com/actions/runner/issues/1456#issue-1042407558
     - name: install and launch docker
