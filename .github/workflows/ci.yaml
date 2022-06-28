@@ -7,70 +7,70 @@ on:
         type: string
         required: true
 jobs:
-  Distros:
-    runs-on: ubuntu-latest
-    continue-on-error: ${{ matrix.allow_failure }}
-    strategy:
-      fail-fast: false
-      matrix:
-        distro: [alpine, centos]
-        allow_failure: [false]
-    env:
-      DISTRO: ${{ matrix.distro }}
+  # Distros:
+  #   runs-on: ubuntu-latest
+  #   continue-on-error: ${{ matrix.allow_failure }}
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       distro: [alpine, centos]
+  #       allow_failure: [false]
+  #   env:
+  #     DISTRO: ${{ matrix.distro }}
 
-    steps:
-    - name: make space
-      run: |
-        sudo rm -rf /usr/share/dotnet
-        sudo rm -rf /opt/ghc
-        sudo rm -rf "/usr/local/share/boost"
-        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+  #   steps:
+  #   - name: make space
+  #     run: |
+  #       sudo rm -rf /usr/share/dotnet
+  #       sudo rm -rf /opt/ghc
+  #       sudo rm -rf "/usr/local/share/boost"
+  #       sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
-    - uses: actions/checkout@v2
+  #   - uses: actions/checkout@v2
 
-    - name: Run Bazel Cache server
-      run: |
-        CONTAINER_ID=$(docker run -dt \
-          -e BAZEL_REMOTE_S3_AUTH_METHOD=access_key \
-          -e BAZEL_REMOTE_S3_BUCKET=${{secrets.AWS_BAZEL_CACHE_S3_BUCKET}} \
-          -e BAZEL_REMOTE_S3_ACCESS_KEY_ID=${{secrets.AWS_BAZEL_CACHE_ACCESS_KEY}} \
-          -e BAZEL_REMOTE_S3_SECRET_ACCESS_KEY=${{secrets.AWS_BAZEL_CACHE_SECRET_KEY}} \
-          -e BAZEL_REMOTE_S3_REGION=us-east-2 \
-          -e BAZEL_REMOTE_ACCESS_LOG_LEVEL=all \
-          -e BAZEL_REMOTE_S3_ENDPOINT=s3.us-east-2.amazonaws.com \
-          -e BAZEL_REMOTE_DIR=/data \
-          -e BAZEL_REMOTE_S3_PREFIX=envoy/${{matrix.distro}}-latest \
-          -p 9092:9092 \
-          -p 8080:8080 \
-          buchgr/bazel-remote-cache)
-        echo "REMOTE_CACHE_SEVER_IP=$(docker inspect $CONTAINER_ID | jq -r '.[].NetworkSettings.Networks.bridge.IPAddress')" >> $GITHUB_ENV
+  #   - name: Run Bazel Cache server
+  #     run: |
+  #       CONTAINER_ID=$(docker run -dt \
+  #         -e BAZEL_REMOTE_S3_AUTH_METHOD=access_key \
+  #         -e BAZEL_REMOTE_S3_BUCKET=${{secrets.AWS_BAZEL_CACHE_S3_BUCKET}} \
+  #         -e BAZEL_REMOTE_S3_ACCESS_KEY_ID=${{secrets.AWS_BAZEL_CACHE_ACCESS_KEY}} \
+  #         -e BAZEL_REMOTE_S3_SECRET_ACCESS_KEY=${{secrets.AWS_BAZEL_CACHE_SECRET_KEY}} \
+  #         -e BAZEL_REMOTE_S3_REGION=us-east-2 \
+  #         -e BAZEL_REMOTE_ACCESS_LOG_LEVEL=all \
+  #         -e BAZEL_REMOTE_S3_ENDPOINT=s3.us-east-2.amazonaws.com \
+  #         -e BAZEL_REMOTE_DIR=/data \
+  #         -e BAZEL_REMOTE_S3_PREFIX=envoy/${{matrix.distro}}-latest \
+  #         -p 9092:9092 \
+  #         -p 8080:8080 \
+  #         buchgr/bazel-remote-cache)
+  #       echo "REMOTE_CACHE_SEVER_IP=$(docker inspect $CONTAINER_ID | jq -r '.[].NetworkSettings.Networks.bridge.IPAddress')" >> $GITHUB_ENV
     
-    - name: make build envoy
-      run: make build/envoy
-      env:
-        GOOS: linux
-        GOARCH: amd64
-        ENVOY_DISTRO: ${{matrix.distro}}
-        BUILD_ENVOY_FROM_SOURCES: true
-        ENVOY_TAG: ${{ github.event.inputs.envoyTag }}
-        REMOTE_CACHE_SEVER_HOSTNAME: bazel-remote-server-${{matrix.distro}}
-        REMOTE_CACHE_SEVER_IP: ${{env.REMOTE_CACHE_SEVER_IP}}
+  #   - name: make build envoy
+  #     run: make build/envoy
+  #     env:
+  #       GOOS: linux
+  #       GOARCH: amd64
+  #       ENVOY_DISTRO: ${{matrix.distro}}
+  #       BUILD_ENVOY_FROM_SOURCES: true
+  #       ENVOY_TAG: ${{ github.event.inputs.envoyTag }}
+  #       REMOTE_CACHE_SEVER_HOSTNAME: bazel-remote-server-${{matrix.distro}}
+  #       REMOTE_CACHE_SEVER_IP: ${{env.REMOTE_CACHE_SEVER_IP}}
 
-    - name: Zip artifact
-      run: |
-        if [[ -f build/artifacts-linux-amd64/envoy/envoy-${envoyTag#v}-${{matrix.distro}} ]]; then  
-            tar -czvf build/artifacts-linux-amd64/envoy/envoy-${envoyTag#v}-${{matrix.distro}}.tar.gz build/artifacts-linux-amd64/envoy/envoy-${envoyTag#v}-${{matrix.distro}}
-        fi
-      env:
-        envoyTag: ${{ github.event.inputs.envoyTag }}
+  #   - name: Zip artifact
+  #     run: |
+  #       if [[ -f build/artifacts-linux-amd64/envoy/envoy-${envoyTag#v}-${{matrix.distro}} ]]; then  
+  #           tar -czvf build/artifacts-linux-amd64/envoy/envoy-${envoyTag#v}-${{matrix.distro}}.tar.gz build/artifacts-linux-amd64/envoy/envoy-${envoyTag#v}-${{matrix.distro}}
+  #       fi
+  #     env:
+  #       envoyTag: ${{ github.event.inputs.envoyTag }}
       
-    - name: Save artifact
-      uses: actions/upload-artifact@v3
-      id: save_artifacts
-      with:
-        name: artifacts
-        path: |
-          build/**/envoy/*.tar.gz
+  #   - name: Save artifact
+  #     uses: actions/upload-artifact@v3
+  #     id: save_artifacts
+  #     with:
+  #       name: artifacts
+  #       path: |
+  #         build/**/envoy/*.tar.gz
 
   build_envoy_darwin_amd64:
     runs-on: macos-latest
@@ -78,6 +78,8 @@ jobs:
     - name: Checkout step
       id: checkout
       uses: actions/checkout@v2
+
+    - uses: mikehardy/buildcache-action@v1
 
     # https://github.com/envoyproxy/envoy/blob/main/bazel/README.md#quick-start-bazel-build-for-developers
     - name: install common deps
@@ -90,14 +92,14 @@ jobs:
         softwareupdate --all --install --force
         sudo xcode-select --install
 
-    # # https://github.com/actions/runner/issues/1456#issue-1042407558
-    # - name: install and launch docker
-    #   run: |
-    #     HOMEBREW_NO_AUTO_UPDATE=1 brew install --cask docker
-    #     sudo /Applications/Docker.app/Contents/MacOS/Docker --unattended --install-privileged-components
-    #     open -a /Applications/Docker.app --args --unattended --accept-license
-    #     echo "We are waiting for Docker to be up and running. It can take over 2 minutes..."
-    #     while ! /Applications/Docker.app/Contents/Resources/bin/docker info &>/dev/null; do sleep 1; done
+    # https://github.com/actions/runner/issues/1456#issue-1042407558
+    - name: install and launch docker
+      run: |
+        HOMEBREW_NO_AUTO_UPDATE=1 brew install --cask docker
+        sudo /Applications/Docker.app/Contents/MacOS/Docker --unattended --install-privileged-components
+        open -a /Applications/Docker.app --args --unattended --accept-license
+        echo "We are waiting for Docker to be up and running. It can take over 2 minutes..."
+        while ! /Applications/Docker.app/Contents/Resources/bin/docker info &>/dev/null; do sleep 1; done
 
     - name: Run Bazel Cache server
       run: |
