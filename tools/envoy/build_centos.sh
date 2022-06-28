@@ -16,7 +16,7 @@ read -ra BAZEL_BUILD_EXTRA_OPTIONS <<< "${BAZEL_BUILD_EXTRA_OPTIONS}"
 BAZEL_BUILD_OPTIONS=(
     "--config=libc++"
     "--verbose_failures"
-    "--remote_cache=http://${REMOTE_CACHE_SEVER}:8080"
+    "--remote_cache=http://${REMOTE_CACHE_SEVER_HOSTNAME}:8080"
     "${BAZEL_BUILD_EXTRA_OPTIONS[@]+"${BAZEL_BUILD_EXTRA_OPTIONS[@]}"}")
 BUILD_TARGET=${BUILD_TARGET:-"//contrib/exe:envoy-static"}
 
