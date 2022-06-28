@@ -55,6 +55,22 @@ jobs:
         REMOTE_CACHE_SEVER_HOSTNAME: bazel-remote-server-${{matrix.distro}}
         REMOTE_CACHE_SEVER_IP: ${{env.REMOTE_CACHE_SEVER_IP}}
 
+    - name: Zip artifact
+      run: |
+        if [[ -f build/artifacts-linux-amd64/envoy/envoy-${envoyTag#v}-${{matrix.distro}} ]]; then  
+            tar -czvf build/artifacts-linux-amd64/envoy/envoy-${envoyTag#v}-${{matrix.distro}}.tar.gz build/artifacts-linux-amd64/envoy/envoy-${envoyTag#v}-${{matrix.distro}}
+        fi
+      env:
+        envoyTag: ${{ github.event.inputs.envoyTag }}
+      
+    - name: Save artifact
+      uses: actions/upload-artifact@v3
+      id: save_artifacts
+      with:
+        name: artifacts
+        path: |
+          build/**/envoy/*.tar.gz
+
 # jobs:
 #   build_envoy_alpine_amd64:
 #     runs-on: ubuntu-18.04
