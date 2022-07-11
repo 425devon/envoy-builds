@@ -18,7 +18,8 @@ jobs:
       # Also reduce cache poisioning
       max-parallel: 9
       matrix:
-        distro: [alpine, centos, darwin]
+        # distro: [alpine, centos, darwin]
+        distro: [centos]
         arch: [amd64]
         bazel_compile_mode: [opt, dbg, fastbuild]
         bazel_compile_options: [""]
