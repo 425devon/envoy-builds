@@ -7,10 +7,5 @@ WORKDIR /envoy-sources
 
 COPY . .
 
-RUN yum update -y && \
-    yum install -y \
-    gcc \
-    gcc-c++ 
-
 RUN bash -c "bazel/setup_clang.sh /opt/llvm"
 RUN bash -c "$BUILD_CMD"
