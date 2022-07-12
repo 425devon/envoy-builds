@@ -10,9 +10,7 @@ COPY . .
 RUN yum update -y && \
     yum install -y \
     gcc \
-    gcc-c++ \
-    yum -y install centos-release-scl && \
-    yum -y install devtoolset-6-gcc devtoolset-6-gcc-c++ && \
+    gcc-c++ 
 
 RUN bash -c "bazel/setup_clang.sh /opt/llvm"
 RUN bash -c "$BUILD_CMD"
