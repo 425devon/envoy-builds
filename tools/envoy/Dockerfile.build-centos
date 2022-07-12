@@ -7,10 +7,10 @@ WORKDIR /envoy-sources
 
 COPY . .
 
-RUN sudo add-apt-repository ppa:ubuntu-toolchain-r/test \
-sudo apt-get update \
-sudo apt-get install gcc-4.9 \
-sudo apt-get upgrade libstdc++6
+RUN sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+RUN sudo apt-get update
+RUN sudo apt-get install gcc-4.9
+RUN sudo apt-get upgrade libstdc++6
 
 RUN bash -c "bazel/setup_clang.sh /opt/llvm"
 RUN bash -c "$BUILD_CMD"
