@@ -24,14 +24,14 @@ jobs:
         bazel_compile_mode: [opt, dbg, fastbuild]
         bazel_compile_options: [""]
         include:
-          - distro: alpine
-            arch: amd64
-            bazel_compile_mode: opt
-            bazel_compile_options: "--define boringssl=fips"
-          - distro: alpine
-            arch: amd64
-            bazel_compile_mode: dbg
-            bazel_compile_options: "--define boringssl=fips"
+          # - distro: alpine
+          #   arch: amd64
+          #   bazel_compile_mode: opt
+          #   bazel_compile_options: "--define boringssl=fips"
+          # - distro: alpine
+          #   arch: amd64
+          #   bazel_compile_mode: dbg
+          #   bazel_compile_options: "--define boringssl=fips"
           - distro: centos
             arch: amd64
             bazel_compile_mode: opt
@@ -160,7 +160,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ always() }}
     steps:
-      - uses: actions/checkout@v2
+      # - uses: actions/checkout@v2
       - uses: actions/download-artifact@v3
         with:
           path: |
