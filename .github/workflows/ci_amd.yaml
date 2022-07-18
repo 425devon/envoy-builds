@@ -299,6 +299,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           
   notify:
+    needs: metadata
     name: Slack Notification
     if: ${{ always() }}
     runs-on: ubuntu-latest
