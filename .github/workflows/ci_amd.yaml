@@ -33,7 +33,9 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - uses: pozetroninc/github-action-get-latest-release@master
+    - name: Get Latest Envoy Tag
+      if: ${{ github.event_name == 'schedule' }}
+      uses: pozetroninc/github-action-get-latest-release@master
       id: envoyproxy_latest_release
       with:
         owner: envoyproxy
@@ -218,7 +220,7 @@ jobs:
         REMOTE_CACHE_SEVER_IP:  ${{ matrix.distro != 'darwin' && env.DOCKER_CACHE_SEVER_IP || 'localhost' }}
         # For any customization of bazel compile options and rebulding of old tags / releases, 
         # Disable cache upload to avoid cache poisioning of shared cache / distro
-        BAZEL_CACHE_MODE:  ${{ (needs.metadata.outputs.isNewRelease == false && matrix.bazel_compile_options != '') && '--noremote_upload_local_results' || '--remote_upload_local_results' }}
+        BAZEL_CACHE_MODE:  ${{ needs.metadata.outputs.isNewRelease == false && '--noremote_upload_local_results' || '--remote_upload_local_results' }}
 
     # --experimental_enable_docker_sandbox 
     # --experimental_reuse_sandbox_directories
@@ -314,6 +316,3 @@ jobs:
           failure_text: '<${env.GITHUB_SERVER_URL}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}|${env.GITHUB_WORKFLOW} (${env.GITHUB_RUN_NUMBER})> workflow failed :blob_fire:'
           cancelled_text: '<${env.GITHUB_SERVER_URL}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}|${env.GITHUB_WORKFLOW} (${env.GITHUB_RUN_NUMBER})> workflow cancelled :x:'
 
-      # - name: Set job status
-      #   if: ${{ env.WORKFLOW_CONCLUSION == 'failure' || env.WORKFLOW_CONCLUSION == 'cancelled' }}
-      #   run: exit 1
