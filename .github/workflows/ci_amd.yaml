@@ -123,7 +123,8 @@ jobs:
       max-parallel: 9
       fail-fast: false
       matrix:
-        distro: [alpine, centos, darwin]
+        # distro: [alpine, centos, darwin]
+        distro: [alpine, darwin]
         arch: [amd64]
         bazel_compile_mode: [opt, dbg, fastbuild]
         bazel_compile_options: [""]
@@ -277,6 +278,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Display structure of downloaded files
+        run: ls -R
+
       - name: Create Tag
         id: tag_version
         uses: rickstaa/action-create-tag@v1
