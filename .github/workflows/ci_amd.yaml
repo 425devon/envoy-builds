@@ -295,7 +295,7 @@ jobs:
       - uses: ncipollo/release-action@v1
         with:
           tag: ${{needs.metadata.outputs.releaseTag}}
-          artifacts: "envoy-*.tar.gz"
+          artifacts: "./artifacts/envoy-*.tar.gz"
           artifactErrorsFailBuild: true
           allowUpdates: true
           replacesArtifacts: true
