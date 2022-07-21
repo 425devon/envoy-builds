@@ -123,8 +123,7 @@ jobs:
       max-parallel: 9
       fail-fast: false
       matrix:
-        # distro: [alpine, centos, darwin]
-        distro: [alpine, darwin]
+        distro: [alpine, centos, darwin]
         arch: [amd64]
         bazel_compile_mode: [opt, dbg, fastbuild]
         bazel_compile_options: [""]
@@ -223,13 +222,6 @@ jobs:
         # Disable cache upload to avoid cache poisioning of shared cache / distro
         BAZEL_CACHE_MODE:  ${{ needs.metadata.outputs.isNewRelease == false && '--noremote_upload_local_results' || '--remote_upload_local_results' }}
 
-    # --experimental_enable_docker_sandbox 
-    # --experimental_reuse_sandbox_directories
-    # --local_cpu_resources=HOST_CPUS*.8
-    # --local_ram_resources=HOST_RAM*.8
-    # --experimental_repository_cache_hardlinks
-    # --experimental_remote_merkle_tree_cache
-    # --experimental_remote_cache_async
     - name: Build envoy
       run: make build/envoy
       env:
