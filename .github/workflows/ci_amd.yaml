@@ -1,22 +1,127 @@
 name: CI_AMD
 on: 
+  schedule:
+    - cron: 0 5,15 */15,16 * *
   workflow_dispatch:
     inputs:
       envoyTag:
         description: 'envoy tag to build'
         type: string
-        required: true
+        required: false
+      reBuild:
+        description: 'rebuild existing envoy tag'
+        type: boolean
+        default: false
       s3CachePrefix:
         description: 'envoy s3 cache prefix'
         type: string
         default: envoy
+
 jobs:
+  metadata:
+    runs-on: ubuntu-18.04
+    continue-on-error: false
+    outputs:
+      envoyTag: "${{steps.metadata.outputs.envoyTag}}"
+      envoyTagTrimmed: "${{steps.metadata.outputs.envoyTagTrimmed}}"
+      envoyTagMajorRelease: "${{steps.metadata.outputs.envoyTagMajorRelease}}"
+      envoyTagPatchRelease: "${{steps.metadata.outputs.envoyTagPatchRelease}}"
+      buildMetadata: "${{steps.metadata.outputs.buildMetadata}}"
+      s3CacheBase: "${{steps.metadata.outputs.s3CacheBase}}"
+      releaseTag: "${{steps.metadata.outputs.releaseTag}}"
+      isNewRlease: "${{steps.metadata.outputs.isNewRlease}}"
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Get Latest Envoy Tag
+      if: ${{ github.event_name == 'schedule' }}
+      uses: pozetroninc/github-action-get-latest-release@master
+      id: envoyproxy_latest_release
+      with:
+        owner: envoyproxy
+        repo: envoy
+        excludes: prerelease, draft
+
+    - name: Set Envoy Tag
+      id: current_envoy
+      if: ${{ github.event_name == 'schedule' || github.event.inputs.envoyTag != ''  }}
+      run: |
+        if [[ ${{github.event_name}} == 'schedule' ]]; then
+          echo "::set-output name=envoyTag::${{steps.envoyproxy_latest_release.outputs.release}}"
+        elif [[ ${{github.event_name}} == 'workflow_dispatch' ]] && [[ ! -z ${{github.event.inputs.envoyTag}} ]]; then
+          echo "::set-output name=envoyTag::${{github.event.inputs.envoyTag}}"
+        fi
+        echo "::set-output name=envoyBuildSHA::$(git rev-parse --short HEAD)"
+        
+    
+    # ^v(\d+\.\d+\.\d)+(?:(-)([\d\w-]+(?:\.[\d\w-]+)*))?(?:\+[\d\w-]+)?$
+    # actions-ecosystem/action-regex-match@v2
+    - name: Parse Input Envoy Tag
+      uses: release-kit/semver@v1
+      id: parse_current_envoy
+      with:
+        input: '${{steps.current_envoy.outputs.envoyTag}}'
+    
+    # Check if a release for envoy already exists for matching major.minor version
+    - name: Check previous matching released envoy
+      uses: cardinalby/git-get-release-action@v1
+      id: previous_envoy_release
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      with:
+        releaseNameRegEx: "${{steps.parse_current_envoy.outputs.major}}.${{steps.parse_current_envoy.outputs.minor}}.*"
+        draft: false
+        prerelease: false
+        doNotFailIfNotFound: true  # If not found, returns empty release id in outputs
+    
+    - name: Parse previous release envoy tag
+      uses: release-kit/semver@v1
+      id: parse_previous_envoy
+      if: ${{steps.previous_envoy_release.outputs.id != '' }}
+      with:
+        input: ${{steps.previous_envoy_release.outputs.tag_name}}
+
+    - name: Set Previous Release Metadata 
+      if: ${{steps.previous_envoy_release.outputs.id != '' }}
+      id: release_type
+      run: |
+        echo "previous release id: ${{ steps.previous_envoy_release.outputs.id}}"
+        echo "previous release name: ${{ steps.previous_envoy_release.outputs.name}}"
+        echo "previous release tag: ${{ steps.previous_envoy_release.outputs.tag_name}}"
+        echo "previous release createdAt: ${{ steps.previous_envoy_release.outputs.created_at}}"
+        if [[ "${{steps.parse_current_envoy.outputs.patch}}" -le "${{steps.parse_previous_envoy.outputs.patch}}" ]]; then
+          echo "::set-output name=isNewRlease::false"
+        fi
+
+    - name: Exit Early
+      if: ${{steps.previous_envoy_release.outputs.id != '' && github.event.inputs.rebuild == 'false' }}
+      id: exit
+      run: |
+        msg="Found existing release: ${{steps.previous_envoy_release.outputs.name}} and Rebuild set to: ${{github.event.inputs.rebuild}}"
+        echo "::set-output name=exitMsg=$(echo $msg)"
+        echo "::notice file=ci_amd.yaml,line=94::$msg"
+        exit 1
+
+    - name: Set Build Metadata
+      id: metadata
+      run: |
+        echo "::set-output name=envoyTag::${{steps.current_envoy.outputs.envoyTag}}"
+        echo "::set-output name=envoyTagTrimmed::${{steps.parse_current_envoy.outputs.full}}"
+        echo "::set-output name=envoyTagMajorRelease::${{steps.parse_current_envoy.outputs.major}}.${{steps.parse_current_envoy.outputs.minor}}"
+        echo "::set-output name=envoyTagPatchRelease::${{steps.parse_current_envoy.outputs.patch}}"
+        echo "::set-output name=s3CacheBase::$(echo "${{github.event.inputs.s3CachePrefix}}/v${{steps.parse_current_envoy.outputs.major}}.${{steps.parse_current_envoy.outputs.minor}}.x")"
+        echo "::set-output name=buildMetadata::$(echo "eb.${{steps.current_envoy.outputs.envoyBuildSHA}}")"
+        echo "::set-output name=releaseTag::$(echo "${{steps.parse_current_envoy.outputs.full}}+eb.${{steps.current_envoy.outputs.envoyBuildSHA}}")"
+        echo "::set-output name=isNewRlease::${{steps.release_type.outputs.isNewRlease == false && steps.release_type.outputs.isNewRlease || true}}"
+
   build:
+    needs: metadata
     strategy:
       # Use to populate base cache for use by any of customized compile options in read-only-mode
       # This will speed up the first run to populate cache for 3 distros in 3 compilation moodes
       # Also reduce cache poisioning
       max-parallel: 9
+      fail-fast: false
       matrix:
         distro: [alpine, centos, darwin]
         arch: [amd64]
@@ -31,17 +136,22 @@ jobs:
             arch: amd64
             bazel_compile_mode: dbg
             bazel_compile_options: "--define boringssl=fips"
-          - distro: centos
-            arch: amd64
-            bazel_compile_mode: opt
-            bazel_compile_options: "--define boringssl=fips"
-          - distro: centos
-            arch: amd64
-            bazel_compile_mode: dbg
-            bazel_compile_options: "--define boringssl=fips"
-    runs-on: ${{ matrix.distro != 'darwin' && 'ubuntu-latest' || 'macos-latest' }}
-    continue-on-error: true
+    runs-on: ${{ matrix.distro != 'darwin' && 'ubuntu-18.04' || 'macos-latest' }}
+    continue-on-error: false
     steps:
+
+    - name: Inspect
+      run: |
+        echo "Build Environment:"
+        echo "envoyTag: ${{needs.metadata.outputs.envoyTag}}"
+        echo "envoyTagTrimmed: ${{needs.metadata.outputs.envoyTagTrimmed}}"
+        echo "envoyTagMajorRelease: ${{needs.metadata.outputs.envoyTagMajorRelease}}"
+        echo "envoyTagPatchRelease: ${{needs.metadata.outputs.envoyTagPatchRelease}}"
+        echo "buildMetadata: ${{needs.metadata.outputs.buildMetadata}}"
+        echo "s3CacheBase: ${{needs.metadata.outputs.s3CacheBase}}"
+        echo "s3CacheKey: ${{needs.metadata.outputs.s3CacheBase}}/${{matrix.bazel_compile_mode}}/${{matrix.distro}}-${{matrix.arch}}"
+        echo "releaseTag: ${{needs.metadata.outputs.releaseTag}}"
+        echo "isNewRelease: ${{needs.metadata.outputs.isNewRlease}}"
 
     - name: Maximize build space
       run: |
@@ -70,7 +180,6 @@ jobs:
         brew install coreutils automake ninja clang-format
         
         sudo rm -rf /Library/Developer/CommandLineTools
-        softwareupdate --all --install --force
         sudo xcode-select --install
         # https://github.com/actions/runner/issues/1456#issue-1042407558
         HOMEBREW_NO_AUTO_UPDATE=1 brew install --cask docker
@@ -78,14 +187,10 @@ jobs:
         open -a /Applications/Docker.app --args --unattended --accept-license
         echo "We are waiting for Docker to be up and running. It can take over 2 minutes..."
         while ! /Applications/Docker.app/Contents/Resources/bin/docker info &>/dev/null; do sleep 1; done
-    
-    - name: Print System stats
-      run: |
-        echo "Free space:"
-        df -h
 
     - uses: actions/checkout@v3
 
+    # BAZEL_REMOTE_MAX_SIZE is specified in units of GiB
     - name: Run Bazel Cache server
       run: |
         CONTAINER_ID=$(docker run -dt \
@@ -95,9 +200,11 @@ jobs:
           -e BAZEL_REMOTE_S3_SECRET_ACCESS_KEY=${{secrets.AWS_BAZEL_CACHE_SECRET_KEY}} \
           -e BAZEL_REMOTE_S3_REGION=us-east-2 \
           -e BAZEL_REMOTE_ACCESS_LOG_LEVEL=all \
+          -e BAZEL_REMOTE_EXPERIMENTAL_REMOTE_ASSET_API=true \
           -e BAZEL_REMOTE_S3_ENDPOINT=s3.us-east-2.amazonaws.com \
           -e BAZEL_REMOTE_DIR=/data \
-          -e BAZEL_REMOTE_S3_PREFIX=${{ github.event.inputs.s3CachePrefix }}/${{matrix.bazel_compile_mode}}/${{matrix.distro}}-${{matrix.arch}} \
+          -e BAZEL_REMOTE_MAX_SIZE=10 \
+          -e BAZEL_REMOTE_S3_PREFIX=${{needs.metadata.outputs.s3CacheBase}}/${{matrix.bazel_compile_mode}}/${{matrix.distro}}-${{matrix.arch}} \
           -p 9092:9092 \
           -p 8080:8080 \
           buchgr/bazel-remote-cache)
@@ -111,9 +218,9 @@ jobs:
       env:
         REMOTE_CACHE_SEVER_HOSTNAME:  ${{ matrix.distro != 'darwin' && 'bazel-remote-server' || 'localhost' }}
         REMOTE_CACHE_SEVER_IP:  ${{ matrix.distro != 'darwin' && env.DOCKER_CACHE_SEVER_IP || 'localhost' }}
-        # For any customization of bazel compile options, 
+        # For any customization of bazel compile options and rebulding of old tags / releases, 
         # Disable cache upload to avoid cache poisioning of shared cache / distro
-        BAZEL_CACHE_MODE:  ${{ matrix.bazel_compile_options != '' && '--noremote_upload_local_results' || '--remote_upload_local_results' }}
+        BAZEL_CACHE_MODE:  ${{ needs.metadata.outputs.isNewRelease == false && '--noremote_upload_local_results' || '--remote_upload_local_results' }}
 
     - name: Build envoy
       run: make build/envoy
@@ -122,12 +229,15 @@ jobs:
         GOARCH: ${{matrix.arch}}
         ENVOY_DISTRO: ${{matrix.distro}}
         BUILD_ENVOY_FROM_SOURCES: true
-        ENVOY_TAG: ${{ github.event.inputs.envoyTag }}
+        ENVOY_TAG: ${{ needs.metadata.outputs.envoyTag }}
         BAZEL_BUILD_EXTRA_OPTIONS: >-
-          --discard_analysis_cache 
+          --profile=/tmp/profile.gz
+          --discard_analysis_cache
           --nostamp 
           --nouse_action_cache
-          --remote_cache=http://${{env.REMOTE_CACHE_SEVER_HOSTNAME}}:8080
+          --remote_local_fallback
+          --remote_cache=grpc://${{env.REMOTE_CACHE_SEVER_HOSTNAME}}:9092
+          --experimental_remote_downloader=grpc://${{env.REMOTE_CACHE_SEVER_HOSTNAME}}:9092
           ${{env.BAZEL_CACHE_MODE}}
           ${{matrix.bazel_compile_options}}
         BAZEL_COMPILATION_MODE: ${{matrix.bazel_compile_mode}}
@@ -137,12 +247,12 @@ jobs:
     - name: Zip artifact
       run: |
         if [[ -f build/artifacts-${{env.GOOS}}-${{env.GOARCH}}/envoy/envoy-${{matrix.distro}} ]]; then  
-          tar -czvf envoy-${{env.GOOS}}-${{matrix.arch}}-${{env.ENVOY_TAG}}-${{matrix.distro}}-${{env.BAZEL_COMPILATION_MODE}}${{env.ARTIFACT_EXT}}.tar.gz build/artifacts-${{env.GOOS}}-${{env.GOARCH}}/envoy/envoy-${{matrix.distro}}
+          tar -C build/artifacts-${{env.GOOS}}-${{env.GOARCH}}/envoy -czvf envoy-${{env.GOOS}}-${{matrix.arch}}-${{env.ENVOY_TAG}}-${{matrix.distro}}-${{env.BAZEL_COMPILATION_MODE}}${{env.ARTIFACT_EXT}}.tar.gz .
         fi
       env:
         GOOS: ${{ matrix.distro != 'darwin' && 'linux' || matrix.distro }}
         GOARCH: ${{matrix.arch}}
-        ENVOY_TAG: ${{ github.event.inputs.envoyTag }}
+        ENVOY_TAG: ${{ needs.metadata.outputs.envoyTag }}
         BAZEL_COMPILATION_MODE: ${{matrix.bazel_compile_mode}}
         ARTIFACT_EXT:  ${{ matrix.bazel_compile_options != '' && '-extended' || '' }}
 
@@ -153,15 +263,57 @@ jobs:
         name: artifacts
         path: |
           envoy-*.tar.gz
-  
-  collect:
-    needs: build
-    runs-on: ubuntu-latest
+
+  publish:
+    needs: [metadata, build]
     if: ${{ always() }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/download-artifact@v3
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Display structure of downloaded files
+        run: ls -R
+
+      - name: Create Tag
+        id: tag_version
+        uses: rickstaa/action-create-tag@v1
         with:
-          path: |
-            envoy-*.tar.gz
-        
+          commit_sha: ${{github.sha}}
+          tag: ${{needs.metadata.outputs.releaseTag}}
+          force_push_tag: true
+      - uses: ncipollo/release-action@v1
+        with:
+          tag: ${{needs.metadata.outputs.releaseTag}}
+          artifacts: "./artifacts/envoy-*.tar.gz"
+          artifactErrorsFailBuild: true
+          allowUpdates: true
+          replacesArtifacts: true
+          omitNameDuringUpdate: true
+          omitBodyDuringUpdate: true
+          generateReleaseNotes: true
+          body: |
+            Release Envoy Tag: ${{needs.metadata.outputs.releaseTag}}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+  notify:
+    needs: publish
+    name: Slack Notification
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get aggregate Workflow status
+        uses: technote-space/workflow-conclusion-action@v3
+
+      - name: Send notification
+        uses: edge/simple-slack-notify@v1
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        with:
+          status: ${{ env.WORKFLOW_CONCLUSION }}
+          success_text: '<${env.GITHUB_SERVER_URL}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}|${env.GITHUB_WORKFLOW} (${env.GITHUB_RUN_NUMBER})> workflow completed successfully :woohoo-homer:'
+          failure_text: '<${env.GITHUB_SERVER_URL}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}|${env.GITHUB_WORKFLOW} (${env.GITHUB_RUN_NUMBER})> workflow failed :blob_fire:'
+          cancelled_text: '<${env.GITHUB_SERVER_URL}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}|${env.GITHUB_WORKFLOW} (${env.GITHUB_RUN_NUMBER})> workflow cancelled :x:'
+
