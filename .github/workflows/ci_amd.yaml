@@ -49,7 +49,7 @@ jobs:
       run: |
         if [[ ${{github.event_name}} == 'schedule' ]]; then
           echo "::set-output name=envoyTag::${{steps.envoyproxy_latest_release.outputs.release}}"
-        elif [[ ${{github.event_name}} == 'workflow_dispatch' ]] && [[ ! -z ${{github.event.inputs.envoyTag}} ]]; then
+        elif [[ ${{github.event_name}} == 'workflow_dispatch' ]] && [[ ! -z '${{github.event.inputs.envoyTag}}' ]]; then
           echo "::set-output name=envoyTag::${{github.event.inputs.envoyTag}}"
         fi
         echo "::set-output name=envoyBuildSHA::$(git rev-parse --short HEAD)"
