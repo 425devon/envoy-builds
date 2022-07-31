@@ -1,7 +1,8 @@
 name: CI_AMD
 on: 
   schedule:
-    - cron: 0 5,15 */15,16 * *
+  # “At minute 0 past hour 5 and 15 on day-of-month 1 and 16.”
+    - cron: 0 5,15 1,16 * *
   workflow_dispatch:
     inputs:
       envoyTag:
