@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 # file in format CONTRIB_EXTENSIONS = {...}
-exec(open('/contrib/contrib_build_config.bzl').read())
-exec(open('/source/extensions/extensions_build_config.bzl').read())
+exec(open('contrib/contrib_build_config.bzl').read())
+exec(open('source/extensions/extensions_build_config.bzl').read())
 
 # By default all contrib are disabled. Use whitelisting to enable
 enable_contrib_extensions = [
