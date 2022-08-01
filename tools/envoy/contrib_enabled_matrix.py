@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import os
 
 # file in format CONTRIB_EXTENSIONS = {...}
 exec(open('/contrib/contrib_build_config.bzl').read())
