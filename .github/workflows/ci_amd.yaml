@@ -137,7 +137,7 @@ jobs:
             arch: amd64
             bazel_compile_mode: dbg
             bazel_compile_options: "--define boringssl=fips"
-    runs-on: ${{ matrix.distro != 'darwin' && 'ubuntu-18.04' || 'macos-latest' }}
+    runs-on: ${{ matrix.distro != 'darwin' && 'ubuntu-18.04' || 'macos-12' }}
     continue-on-error: false
     steps:
 
