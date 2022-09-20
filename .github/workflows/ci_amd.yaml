@@ -137,7 +137,7 @@ jobs:
             arch: amd64
             bazel_compile_mode: dbg
             bazel_compile_options: "--define boringssl=fips"
-    runs-on: ${{ matrix.distro != 'darwin' && 'ubuntu-18.04' || 'macos-latest' }}
+    runs-on: ${{ matrix.distro != 'darwin' && 'ubuntu-18.04' || 'macos-12' }}
     continue-on-error: false
     steps:
 
@@ -241,6 +241,7 @@ jobs:
           --experimental_remote_downloader=grpc://${{env.REMOTE_CACHE_SEVER_HOSTNAME}}:9092
           ${{env.BAZEL_CACHE_MODE}}
           ${{matrix.bazel_compile_options}}
+          ${{ matrix.bazel_compile_mode != 'dbg' && '--strip=always' || '--strip=sometimes' }}
         BAZEL_COMPILATION_MODE: ${{matrix.bazel_compile_mode}}
         DOCKER_BUILD_EXTRA_OPTIONS: >-
           --add-host=${{env.REMOTE_CACHE_SEVER_HOSTNAME}}:${{env.REMOTE_CACHE_SEVER_IP}}
